@@ -1,0 +1,40 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0A1627"/>
+      <stop offset="1" stop-color="#050A12"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#20D9F2"/>
+      <stop offset="1" stop-color="#338BFF"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+
+  <!-- Shield outline -->
+  <path d="M256 96 L392 150 V268 C392 350 332 402 256 430 C180 402 120 350 120 268 V150 Z"
+        fill="none" stroke="url(#shield)" stroke-width="16" stroke-linejoin="round"
+        opacity="0.95"/>
+
+  <!-- Connected-network motif inside the shield -->
+  <g filter="url(#glow)">
+    <!-- links -->
+    <g stroke="#13D6C1" stroke-width="5" opacity="0.8">
+      <line x1="256" y1="180" x2="196" y2="250"/>
+      <line x1="256" y1="180" x2="316" y2="250"/>
+      <line x1="196" y1="250" x2="256" y2="330"/>
+      <line x1="316" y1="250" x2="256" y2="330"/>
+      <line x1="196" y1="250" x2="316" y2="250"/>
+    </g>
+    <!-- nodes -->
+    <circle cx="256" cy="180" r="18" fill="#20D9F2"/>
+    <circle cx="196" cy="250" r="14" fill="#338BFF"/>
+    <circle cx="316" cy="250" r="14" fill="#338BFF"/>
+    <circle cx="256" cy="330" r="16" fill="#13D6C1"/>
+  </g>
+</svg>

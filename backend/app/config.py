@@ -10,8 +10,10 @@ import json
 from functools import lru_cache
 from typing import Any, Literal
 
+from typing import Annotated
+
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -44,8 +46,13 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = Field(default="changeme-admin")
 
-    # Comma-separated list of allowed CORS origins.
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    # Comma-separated list of allowed CORS origins. NoDecode lets our custom
+    # validator parse comma-separated strings (pydantic-settings would otherwise
+    # try to JSON-decode the env value first and fail).
+    cors_origins: Annotated[list[str], NoDecode] = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ]
 
     # ---- Rate limiting -------------------------------------------------
     rate_limit_per_minute: int = 120
