@@ -1,0 +1,11 @@
+# Caddy reverse proxy for the Sentinel AI backend on a VM.
+# Gives automatic HTTPS (Let's Encrypt) for your backend API domain, so a
+# Vercel-hosted (HTTPS) frontend can call it without mixed-content errors.
+#
+# Set API_DOMAIN (e.g. api.example.com) in deploy/.env — its DNS A/AAAA record
+# must point at this VM, and ports 80 + 443 must be open.
+
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy backend:8000
+}

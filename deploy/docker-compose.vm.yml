@@ -1,0 +1,71 @@
+# Sentinel AI — VM backend stack (backend + Postgres + Caddy HTTPS).
+#
+# Use this on a small VM when the FRONTEND is hosted on Vercel. It runs the
+# backend API + in-process scheduler + PostgreSQL, and fronts the API with
+# Caddy for automatic HTTPS so the Vercel (HTTPS) frontend can reach it.
+#
+#   cd deploy
+#   cp .env.vm.example .env     # fill in secrets, API keys, API_DOMAIN
+#   docker compose -f docker-compose.vm.yml up -d --build
+#
+# The database is NOT published to the host (stays off the public internet).
+# Only Caddy exposes ports 80/443. The backend is reachable only via Caddy.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sentinel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-sentinel}
+    volumes:
+      - sentinel_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sentinel}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ../backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-sentinel}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-sentinel}
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
+      # MUST include your Vercel frontend origin(s), comma-separated.
+      CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS to your Vercel URL}
+      ENVIRONMENT: production
+      DEBUG: "false"
+      ENABLE_SCHEDULER: "true"
+      # Optional provider keys (leave blank to run RSS + local evidence only).
+      NEWSAPI_KEY: ${NEWSAPI_KEY:-}
+      GOOGLE_FACTCHECK_API_KEY: ${GOOGLE_FACTCHECK_API_KEY:-}
+    # No published ports — only Caddy can reach the backend.
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      API_DOMAIN: ${API_DOMAIN:?set API_DOMAIN (e.g. api.example.com)}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  sentinel_pgdata:
+  caddy_data:
+  caddy_config:

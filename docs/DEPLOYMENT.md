@@ -148,6 +148,63 @@ belong to the account you intend to bill **before** provisioning anything, and
 never create paid resources without explicit authorization. Sentinel AI will
 not provision cloud resources on your behalf.
 
+## 5a. Runbook: Vercel frontend + VM backend (recommended)
+
+**Why this split:** Vercel is perfect for the static frontend (free), but the
+FastAPI backend needs a persistent process for the scheduler + a live DB
+connection — that belongs on a small VM, not Vercel's serverless functions.
+
+> **Critical:** a Vercel frontend is served over **HTTPS**, so it cannot call a
+> plain `http://VM_IP:8000` backend (browsers block mixed content). The backend
+> must be on **HTTPS via a domain**. The provided `deploy/` stack uses Caddy for
+> automatic Let's Encrypt TLS.
+
+### A. Backend + Postgres on the VM
+1. Provision a small VM (1 shared vCPU / 1 GB RAM is plenty) and install Docker
+   + the compose plugin.
+2. Point a DNS record (e.g. `api.yourdomain.com`) at the VM's IP. Open ports
+   **80**, **443** (and **22** for SSH). Do **not** open 5432/8000 publicly.
+3. Clone the repo and configure:
+   ```bash
+   git clone https://github.com/evanchoudhury/Ai-network-monitoring-system.git
+   cd Ai-network-monitoring-system/deploy
+   cp .env.vm.example .env    # then edit:
+   #   SECRET_KEY, ADMIN_PASSWORD, POSTGRES_PASSWORD  (strong, unique)
+   #   API_DOMAIN=api.yourdomain.com
+   #   CORS_ORIGINS=https://your-app.vercel.app
+   #   NEWSAPI_KEY / GOOGLE_FACTCHECK_API_KEY (optional)
+   ```
+4. Launch (runs migrations, starts API + scheduler + Caddy HTTPS):
+   ```bash
+   docker compose -f docker-compose.vm.yml up -d --build
+   ```
+5. Verify (wait ~30s for the TLS cert):
+   ```bash
+   curl -fsS https://api.yourdomain.com/healthz
+   curl -s  https://api.yourdomain.com/api/status
+   ```
+
+### B. Frontend on Vercel
+1. Import the repo in Vercel. Set **Root Directory** = `frontend` (framework:
+   Vite; build: `npm run build`; output: `dist`).
+2. Add an env var **`VITE_API_BASE_URL=https://api.yourdomain.com`** and deploy.
+3. Confirm the deployed site loads and the header shows **LIVE/stale/not
+   configured** (it's talking to the VM backend).
+
+### C. Feed live data
+From anywhere (or the VM), using the backend URL:
+```bash
+TOKEN=$(curl -s -X POST https://api.yourdomain.com/api/auth/token -d "username=admin&password=YOUR_ADMIN_PASSWORD" | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+curl -X POST https://api.yourdomain.com/api/news/ingest -H "Authorization: Bearer $TOKEN"
+```
+Point your metrics/connection collectors (e.g. `scripts/live_network_collector.ps1`)
+at `https://api.yourdomain.com`.
+
+### Alternative: everything on one VM (simplest, no Vercel)
+The root `docker-compose.yml` serves the frontend (nginx) + backend + Postgres
+on the VM, same-origin (no CORS/mixed-content concerns). Put Caddy in front for
+HTTPS the same way. Use this if you'd rather not split hosts.
+
 ## 5b. Background workers & scheduling
 
 Ingestion and scanning run server-side — **no browser tab needs to be open**.
