@@ -301,8 +301,10 @@ export function NetworkMap({
               value={selected.available === false ? "Unavailable" : "Available"}
             />
           </dl>
-          {selected.is_demo && (
-            <div className="mt-2 text-[10px] uppercase tracking-wider text-warning">Demo data</div>
+          {selected.last_seen && (
+            <div className="mt-2 text-[10px] uppercase tracking-wider text-muted">
+              Last seen {new Date(selected.last_seen).toLocaleTimeString()}
+            </div>
           )}
         </div>
       )}

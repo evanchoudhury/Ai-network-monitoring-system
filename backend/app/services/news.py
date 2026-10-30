@@ -119,6 +119,91 @@ def fetch_feed_bytes(url: str) -> bytes:
         return resp.content
 
 
+def fetch_newsapi_articles(source: IngestionSource) -> list[dict]:
+    """Fetch articles from NewsAPI (https://newsapi.org) using the configured key.
+
+    Raises if no key is configured or the provider returns an error — never
+    fabricates articles. ``source.config`` may set: endpoint
+    ("top-headlines"|"everything"), category, country, q, pageSize.
+    """
+    import httpx
+
+    if not settings.newsapi_key:
+        raise RuntimeError("NEWSAPI_KEY not configured")
+    cfg = source.config or {}
+    endpoint = cfg.get("endpoint", "top-headlines")
+    params: dict = {"pageSize": min(int(cfg.get("pageSize", 50)), 100)}
+    if endpoint == "everything":
+        params["q"] = cfg.get("q", "network security")
+        params["language"] = cfg.get("language", "en")
+        params["sortBy"] = "publishedAt"
+    else:
+        endpoint = "top-headlines"
+        # top-headlines requires at least one of country/category/sources/q.
+        params["category"] = cfg.get("category", "general")
+        if cfg.get("country"):
+            params["country"] = cfg["country"]
+        if cfg.get("q"):
+            params["q"] = cfg["q"]
+
+    with httpx.Client(timeout=settings.http_timeout_seconds) as client:
+        resp = client.get(
+            f"https://newsapi.org/v2/{endpoint}",
+            params=params,
+            headers={"X-Api-Key": settings.newsapi_key, "User-Agent": settings.http_user_agent},
+        )
+    if resp.status_code != 200:
+        # Surface the provider's message without leaking the key.
+        try:
+            msg = resp.json().get("message", resp.text[:160])
+        except Exception:  # noqa: BLE001
+            msg = resp.text[:160]
+        raise RuntimeError(f"NewsAPI {resp.status_code}: {msg}")
+    data = resp.json()
+    if data.get("status") != "ok":
+        raise RuntimeError(f"NewsAPI error: {data.get('message', 'unknown')}")
+
+    out: list[dict] = []
+    for a in data.get("articles", []):
+        title, url = a.get("title"), a.get("url")
+        if not title or not url:
+            continue
+        published = None
+        if a.get("publishedAt"):
+            try:
+                published = datetime.fromisoformat(a["publishedAt"].replace("Z", "+00:00"))
+            except ValueError:
+                published = None
+        out.append({
+            "headline": title.strip()[:512],
+            "url": url.strip(),
+            "published_at": published,
+            "summary": (a.get("description") or "")[: settings.max_article_length_chars] or None,
+            "publisher": (a.get("source") or {}).get("name"),
+            "language": "en",
+        })
+    return out
+
+
+def ingest_source(db: Session, source: IngestionSource) -> dict:
+    """Fetch + persist articles for one source, dispatching by type.
+
+    Records ``last_status``/``last_error`` on the source. Raises on fetch
+    failure (the caller records the error); never fabricates data.
+    """
+    if not source.authorized:
+        raise RuntimeError("Source is not authorized")
+    if source.source_type == SourceType.rss:
+        if not source.url:
+            raise RuntimeError("RSS source has no URL")
+        articles = parse_feed(fetch_feed_bytes(source.url))
+    elif source.source_type == SourceType.newsapi:
+        articles = fetch_newsapi_articles(source)
+    else:
+        raise RuntimeError(f"Unsupported source type: {source.source_type}")
+    return ingest_articles(db, source, articles)
+
+
 # --------------------------------------------------------------------------- #
 # Story grouping
 # --------------------------------------------------------------------------- #

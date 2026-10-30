@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useApi } from "../hooks/useApi";
 import { api } from "../lib/api";
 import type { MapData } from "../lib/types";
-import { AsyncBoundary, SectionCard } from "../components/ui";
+import { AsyncBoundary, EmptyState, SectionCard, StatusBanner } from "../components/ui";
 import { PageHeader, TimeRangeSelect } from "../components/shared";
 import { NetworkMap } from "../components/NetworkMap";
 
@@ -20,7 +20,7 @@ export default function NetworkMapPage() {
   const [onlySuspicious, setOnlySuspicious] = useState(false);
   const [active, setActive] = useState<Set<string>>(new Set(COLOR_FILTERS.map((c) => c.key)));
 
-  const map = useApi<MapData>(() => api.get<MapData>(`/map?hours=${hours}`), [hours]);
+  const map = useApi<MapData>(() => api.get<MapData>(`/map?hours=${hours}`), [hours], { pollMs: 60000 });
 
   const filtered = useMemo(() => {
     if (!map.data) return null;
@@ -45,20 +45,19 @@ export default function NetworkMapPage() {
 
   return (
     <div>
+      {map.data?.network_status && <StatusBanner status={map.data.network_status} />}
       <PageHeader
         title="Global Network Map"
         subtitle="Only locations and connections backed by configured, authorized sources are plotted."
-        demo={map.data?.contains_demo_data}
         actions={<TimeRangeSelect value={hours} onChange={setHours} />}
       />
 
-      <AsyncBoundary state={map} isEmpty={(d) => d.nodes.length === 0}
-        emptyProps={{
-          title: "No located nodes",
-          hint: "No services with geographic coordinates have reported data in this window. Add a service location under Data Sources, or generate demo data.",
-        }}
-      >
-        {(d) => (
+      <AsyncBoundary state={map}>
+        {(d) => d.nodes.length === 0 ? (
+          <SectionCard><EmptyState title="No located nodes"
+            hint={d.empty_reason ?? "No services with geographic coordinates have reported data in this window. Add a service location under Data Sources."} />
+          </SectionCard>
+        ) : (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
             <SectionCard className="lg:col-span-3" bodyClassName="p-2">
               <NetworkMap

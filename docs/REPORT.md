@@ -41,35 +41,45 @@ working, what is demonstrated with synthetic data, and what remains._
 - **Demo vs Live mode** is detected from data presence and shown in the header;
   demo data is labelled **DEMO DATA** and never silently substituted.
 
-## 2. Demonstrated with synthetic data (clearly labelled)
+## 2. LIVE-only operation (no demo mode)
 
-The **Generate demo data** action creates, all flagged `is_demo=true`:
-- 10 geo-located demo services across 9 countries, ~1,920 metric points over 48h
-  with injected diurnal patterns and spikes.
-- 27 connections (a few flagged suspicious).
-- A 12-article demo news corpus → 20 claims assessed by the **real** pipeline
-  (labels: supported / contradicted / misleading / disputed / insufficient).
-- 5 spam messages scored by the **real** rule engine.
-- 6 anomalies detected by the **real** detector on the synthetic spikes, with
-  correlated alerts.
+Demo mode has been **removed** from the running application:
+- There is **no** `/api/admin/demo/generate` route and no "Generate demo data"
+  UI (a test asserts the route returns 404).
+- The synthetic generator now lives in `backend/tests/factories.py` — it is
+  **test-only** and is never imported by `app.*` runtime code.
+- No DEMO/LIVE toggle exists; the dashboard is always LIVE.
+- No synthetic fallback on API error: failures surface as explicit error/stale/
+  not-configured states. Traffic KPIs render `null` → "No data available",
+  never a fabricated `0`.
 
-Nothing here is hard-coded output — demo data is synthetic *input* run through the
-genuine engines.
+Verified LIVE end-to-end against the real backend (SQLite): pushed 120 real
+metric points + 4 traceable connection events, ingested **152 live articles**
+(BBC 37, NPR 10, Guardian 45, Al Jazeera 25, NewsAPI 35), detected 3 anomalies,
+and analyzed 2 real submitted messages. Header showed **LIVE · fresh**; System
+Health showed per-source freshness (Network fresh, News fresh, Spam "no source"
+until a message was submitted, Workers "disabled" when the scheduler was off).
 
 ## 3. What requires credentials / configuration
 
 | Feature | Requirement |
 |---|---|
-| NewsAPI ingestion | `NEWSAPI_KEY` (interface implemented; off by default) |
-| Google Fact Check evidence | `GOOGLE_FACTCHECK_API_KEY` (implemented; returns [] without a key, never fabricates) |
+| NewsAPI ingestion | `NEWSAPI_KEY` — **implemented & tested live** (auto-seeds a source; ingested 35 real articles in testing) |
+| Google Fact Check evidence | A Google Cloud **API key** in `GOOGLE_FACTCHECK_API_KEY` (not an OAuth client secret JSON). Without it, returns [] and reports verification as local-corpus-only — never fabricates |
 | External LLM claim extraction | `LLM_ENABLED=true` + provider key (opt-in; deterministic pipeline is the default and needs none) |
-| Live network metrics | An authorized agent/Prometheus endpoint pushing to `/api/ingest/*` |
+| Live network metrics | An authorized agent/Prometheus endpoint pushing to `/api/ingest/metrics` or `/api/ingest/prometheus` |
+| Global map connections | Connection events pushed to `/api/ingest/connections` + services with coordinates |
 | Production Postgres | `DATABASE_URL` |
 
 ## 4. Tests executed
 
-- **Backend unit + integration: 52 tests, all passing** (`pytest`), synthetic
-  data only, **no paid/external calls**. Coverage spans: backend startup, DB init,
+- **Backend unit + integration: 62 tests, all passing** (`pytest`), synthetic
+  fixtures only, **no paid/external calls**. Includes a dedicated
+  `test_live_only.py` proving: the demo route is gone (404), empty DB reports
+  *not configured* (null KPIs, not fake 0), stale data is reported stale, a
+  failing feed records an error without fabricating articles, the map explains
+  why it has no connections, and the `/status` endpoint reports each subsystem.
+  Other coverage spans: backend startup, DB init,
   metric ingestion + aggregation + Prometheus parsing, anomaly detection (stable
   series / spike / mid-history / missing data / sensitivity / explanation), RSS
   parsing, dedup (incl. tracking-param normalization), story grouping + source

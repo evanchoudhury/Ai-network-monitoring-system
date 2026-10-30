@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useApi } from "../hooks/useApi";
 import { api } from "../lib/api";
-import type { MetricPoint, ServiceInfo } from "../lib/types";
-import { AsyncBoundary, SectionCard } from "../components/ui";
+import type { MetricPoint, ServiceInfo, SubsystemStatus } from "../lib/types";
+import { AsyncBoundary, SectionCard, StatusBanner } from "../components/ui";
 import { PageHeader, TimeRangeSelect } from "../components/shared";
 import { MetricLineChart, TrafficChart } from "../components/charts";
 
@@ -12,9 +12,10 @@ export default function TrafficPage() {
   const q = serviceId ? `&service_id=${serviceId}` : "";
 
   const services = useApi<ServiceInfo[]>(() => api.get<ServiceInfo[]>("/services"), []);
-  const traffic = useApi<{ inbound: MetricPoint[]; outbound: MetricPoint[]; contains_demo_data: boolean }>(
+  const traffic = useApi<{ inbound: MetricPoint[]; outbound: MetricPoint[]; network_status: SubsystemStatus }>(
     () => api.get(`/metrics/traffic?hours=${hours}${q}`),
-    [hours, serviceId]
+    [hours, serviceId],
+    { pollMs: 30000 }
   );
   const rps = useApi<{ points: MetricPoint[] }>(
     () => api.get(`/metrics/history?metric=request_rate&hours=${hours}${q}`),
@@ -31,10 +32,10 @@ export default function TrafficPage() {
 
   return (
     <div>
+      {traffic.data?.network_status && <StatusBanner status={traffic.data.network_status} />}
       <PageHeader
         title="Network Traffic"
         subtitle="Inbound/outbound bandwidth, request rate, latency, and error rate over time."
-        demo={traffic.data?.contains_demo_data}
         actions={
           <div className="flex items-center gap-2">
             <select

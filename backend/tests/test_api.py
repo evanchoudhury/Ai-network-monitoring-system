@@ -21,13 +21,14 @@ def test_prometheus_metrics_exposed(client):
     assert "sentinel_http_requests_total" in r.text
 
 
-def test_overview_reports_mode(client):
+def test_overview_reports_status(client):
     r = client.get("/api/overview")
     assert r.status_code == 200
     body = r.json()
-    assert "mode" in body and "kpis" in body
-    # Fresh DB: no data -> empty mode, honest about it.
-    assert body["mode"]["mode"] in {"empty", "demo", "live", "live_stale"}
+    assert "status" in body and "kpis" in body
+    assert body["status"]["live"] is True
+    # Fresh DB: network not configured — reported honestly, no fake data.
+    assert body["network_configured"] is False
 
 
 def test_login_success_and_failure(client):
@@ -119,14 +120,15 @@ def test_budget_disclaimer_and_enforcement(client, db):
         check_and_reserve(db)
 
 
-def test_map_data_structure(client, auth_headers):
-    # Generate demo data then inspect the map payload.
-    client.post("/api/admin/demo/generate", headers=auth_headers)
+def test_map_data_structure(client, db):
+    # Seed via the isolated test factory (not an API route) and inspect the map.
+    from tests import factories
+    factories.generate_all(db)
     r = client.get("/api/map")
     assert r.status_code == 200
     body = r.json()
     assert "nodes" in body and "connections" in body and "legend" in body
-    assert body["contains_demo_data"] is True
+    assert "network_status" in body
     # Every plotted node has a real location; colours come from the spec set.
     for n in body["nodes"]:
         assert n["lat"] is not None and n["lon"] is not None

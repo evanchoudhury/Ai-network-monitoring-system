@@ -7,7 +7,7 @@ import { formatDateTime } from "../lib/format";
 
 interface ReportSummary {
   window_hours: number;
-  mode: { mode: string };
+  status: { live: boolean; operational: boolean };
   metrics_ingested: number;
   anomalies: number;
   alerts: number;
@@ -49,7 +49,7 @@ export default function ReportsPage() {
             <SectionCard title="Report metadata">
               <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
                 <Row label="Window" value={`${r.window_hours} hours`} />
-                <Row label="Mode" value={r.mode.mode.toUpperCase()} />
+                <Row label="Mode" value={r.status.operational ? "LIVE · receiving data" : "LIVE · awaiting data"} />
                 <Row label="Generated" value={formatDateTime(r.generated_at)} />
               </dl>
               <p className="mt-3 text-xs text-muted">

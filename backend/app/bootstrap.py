@@ -61,6 +61,23 @@ def seed_default_sources(db: Session) -> None:
                 enabled=True, authorized=True,
                 config={"note": "Default source — review per source terms."},
             ))
+
+    # Seed a NewsAPI source only when a key is configured (so the key is
+    # actually usable out of the box). Without a key, nothing is added.
+    if settings.newsapi_key:
+        exists = db.scalar(
+            select(IngestionSource).where(
+                IngestionSource.source_type == SourceType.newsapi
+            )
+        )
+        if exists is None:
+            db.add(IngestionSource(
+                name="NewsAPI Top Headlines",
+                source_type=SourceType.newsapi,
+                url="https://newsapi.org/v2/top-headlines",
+                enabled=True, authorized=True,
+                config={"endpoint": "top-headlines", "category": "general", "pageSize": 50},
+            ))
     db.commit()
 
 

@@ -121,7 +121,21 @@ def build_map_data(db: Session, *, hours: int = 24) -> dict:
             "style": "attack" if c.suspicious else "normal",
         })
 
-    any_demo = any(n["is_demo"] for n in nodes) or any(c["is_demo"] for c in connections)
+    # Honest explanation when there is nothing to plot — never fabricate nodes
+    # or connection paths.
+    if not nodes and not connections:
+        reason = (
+            "No located services have reported metrics in this window. Configure "
+            "a metrics source and set service coordinates to populate the map."
+        )
+    elif not connections:
+        reason = (
+            "No connection events recorded in this window. Nodes are plotted from "
+            "reporting services; connection arcs require recorded connection events."
+        )
+    else:
+        reason = None
+
     return {
         "nodes": nodes,
         "connections": connections,
@@ -141,6 +155,6 @@ def build_map_data(db: Session, *, hours: int = 24) -> dict:
             "suspicious": sum(1 for c in connections if c["suspicious"]),
             "unlocated": len(unlocated),
         },
-        "contains_demo_data": any_demo,
+        "empty_reason": reason,
         "window_hours": hours,
     }

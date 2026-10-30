@@ -1,21 +1,52 @@
 // Shared API response types for Sentinel AI.
 
-export type Mode = "live" | "live_stale" | "demo" | "empty";
+export type SubsystemState =
+  | "fresh"
+  | "stale"
+  | "failed"
+  | "degraded"
+  | "disconnected"
+  | "not_configured"
+  | "no_source"
+  | "active"
+  | "disabled";
 
-export interface ModeInfo {
-  mode: Mode;
-  live_metrics_24h: number;
-  has_demo_data: boolean;
-  last_live_metric_at: string | null;
+export interface SubsystemStatus {
+  subsystem: string;
+  configured: boolean;
+  state: SubsystemState;
+  last_update?: string | null;
+  age_seconds?: number | null;
+  detail: string;
+  instructions?: string;
+  sources?: { name: string; status: string; last_ingested_at: string | null; error: string | null }[];
+  ok_count?: number;
+  failing_count?: number;
+  evidence_providers?: string[];
+  external_evidence_configured?: boolean;
+  analyzed_count?: number;
+  services?: number;
+}
+
+export interface SystemStatus {
+  live: boolean;
+  operational: boolean;
+  generated_at: string;
+  network: SubsystemStatus;
+  news: SubsystemStatus;
+  claims: SubsystemStatus;
+  spam: SubsystemStatus;
+  workers: SubsystemStatus;
 }
 
 export interface Overview {
-  mode: ModeInfo;
+  status: SystemStatus;
+  network_configured: boolean;
   generated_at: string;
   kpis: {
-    incoming_bytes_24h: number;
-    outgoing_bytes_24h: number;
-    requests_per_second: number;
+    incoming_bytes_24h: number | null;
+    outgoing_bytes_24h: number | null;
+    requests_per_second: number | null;
     avg_latency_p95_ms: number | null;
     error_rate: number | null;
     active_alerts: number;
@@ -99,9 +130,9 @@ export interface MapData {
     suspicious: number;
     unlocated: number;
   };
-  contains_demo_data: boolean;
+  empty_reason: string | null;
   window_hours: number;
-  mode: ModeInfo;
+  network_status: SubsystemStatus;
 }
 
 export interface Anomaly {
@@ -219,7 +250,7 @@ export interface Source {
 
 export interface HealthReport {
   overall: "ok" | "degraded" | "down";
-  mode: ModeInfo;
+  status: SystemStatus;
   components: { component: string; status: string; detail: string | null; latency_ms: number | null }[];
   last_errors: { component: string; status: string; detail: string | null; at: string }[];
   generated_at: string;

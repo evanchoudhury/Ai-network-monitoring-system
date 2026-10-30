@@ -29,16 +29,21 @@ from app.services import anomaly_runner
 from app.services import mapdata as map_svc
 from app.services import metrics as metrics_svc
 from app.core.budget import get_status as budget_status
-from app.services.mode import detect_mode
+from app.services import status as status_svc
 
 router = APIRouter(tags=["network"])
 
 
-def _sum_metric(db: Session, column, since) -> float:
-    return float(
-        db.scalar(select(func.coalesce(func.sum(column), 0.0)).where(Metric.timestamp >= since))
-        or 0.0
+def _sum_or_none(db: Session, column, since) -> float | None:
+    """Sum of a metric column in the window, or None when there is NO data.
+
+    Returns None (not 0) when no values exist, so the dashboard can show
+    "No data available" rather than implying zero traffic.
+    """
+    val = db.scalar(
+        select(func.sum(column)).where(Metric.timestamp >= since, column.isnot(None))
     )
+    return float(val) if val is not None else None
 
 
 def _avg_latest(db: Session, column, since) -> float | None:
@@ -52,11 +57,12 @@ def overview(db: Session = Depends(get_db)):
     last_hour = now - timedelta(hours=1)
     last_day = now - timedelta(hours=24)
 
-    mode = detect_mode(db)
+    status = status_svc.overall(db)
 
-    incoming = _sum_metric(db, Metric.bytes_in, last_day)
-    outgoing = _sum_metric(db, Metric.bytes_out, last_day)
-    rps = _avg_latest(db, Metric.request_rate, last_hour) or 0.0
+    # Traffic KPIs are None when no metric data exists (never a fabricated 0).
+    incoming = _sum_or_none(db, Metric.bytes_in, last_day)
+    outgoing = _sum_or_none(db, Metric.bytes_out, last_day)
+    rps = _avg_latest(db, Metric.request_rate, last_hour)
     latency = _avg_latest(db, Metric.latency_p95_ms, last_hour)
     error_rate = _avg_latest(db, Metric.error_rate, last_hour)
 
@@ -84,8 +90,9 @@ def overview(db: Session = Depends(get_db)):
     ).all()
 
     return {
-        "mode": mode,
+        "status": status,
         "generated_at": now.isoformat(),
+        "network_configured": status["network"]["configured"],
         "kpis": {
             "incoming_bytes_24h": incoming,
             "outgoing_bytes_24h": outgoing,
@@ -132,19 +139,18 @@ def metric_history(
     metric: str = Query("request_rate"),
     hours: int = Query(24, ge=1, le=720),
     service_id: int | None = Query(None),
-    include_demo: bool = Query(True),
     db: Session = Depends(get_db),
 ):
     try:
         data = metrics_svc.get_history(
-            db, service_id=service_id, metric=metric, hours=hours, include_demo=include_demo
+            db, service_id=service_id, metric=metric, hours=hours
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     return {
         "metric": metric, "hours": hours, "service_id": service_id,
         "points": data, "count": len(data),
-        "contains_demo_data": any(p["is_demo"] for p in data),
+        "network_status": status_svc.network_status(db),
     }
 
 
@@ -161,14 +167,14 @@ def traffic_series(
         "hours": hours,
         "inbound": bytes_in,
         "outbound": bytes_out,
-        "contains_demo_data": any(p["is_demo"] for p in bytes_in + bytes_out),
+        "network_status": status_svc.network_status(db),
     }
 
 
 @router.get("/map")
 def network_map(hours: int = Query(24, ge=1, le=168), db: Session = Depends(get_db)):
     data = map_svc.build_map_data(db, hours=hours)
-    data["mode"] = detect_mode(db)
+    data["network_status"] = status_svc.network_status(db)
     return data
 
 

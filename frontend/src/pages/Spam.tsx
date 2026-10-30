@@ -110,7 +110,7 @@ export default function SpamPage() {
 
         <SectionCard title="Recent Detections" bodyClassName="p-0">
           <AsyncBoundary state={recent} isEmpty={(d) => d.items.length === 0}
-            emptyProps={{ title: "No detections yet", hint: "Analyze a message to populate." }}>
+            emptyProps={{ title: "NO MESSAGE SOURCE CONNECTED", hint: "Submit a message above, or connect an authorized message source, to populate detections." }}>
             {(d) => (
               <div className="divide-y divide-border/60">
                 {d.items.map((s) => (

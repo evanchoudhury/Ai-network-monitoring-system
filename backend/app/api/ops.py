@@ -27,11 +27,10 @@ from app.models import (
     utcnow,
 )
 from app.schemas.schemas import ServiceIn, SourceIn
-from app.services import demo as demo_svc
 from app.services import health as health_svc
 from app.services import retention as retention_svc
 from app.core.budget import get_status as budget_status
-from app.services.mode import detect_mode
+from app.services import status as status_svc
 
 router = APIRouter(tags=["ops"])
 
@@ -122,7 +121,7 @@ def health(db: Session = Depends(get_db)):
     ).all()
     return {
         "overall": overall,
-        "mode": detect_mode(db),
+        "status": status_svc.overall(db),
         "components": checks,
         "last_errors": [
             {"component": e.component, "status": e.status, "detail": e.detail,
@@ -162,6 +161,12 @@ def budget(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/status")
+def data_source_status(db: Session = Depends(get_db)):
+    """Per-subsystem LIVE status: configured?, state, freshness, instructions."""
+    return status_svc.overall(db)
+
+
 @router.get("/usage")
 def usage(days: int = Query(7, ge=1, le=90), db: Session = Depends(get_db)):
     since = utcnow() - timedelta(days=days)
@@ -194,7 +199,7 @@ def report_summary(hours: int = Query(24, ge=1, le=720), db: Session = Depends(g
 
     return {
         "window_hours": hours,
-        "mode": detect_mode(db),
+        "status": status_svc.overall(db),
         "metrics_ingested": count(Metric, Metric.timestamp),
         "anomalies": count(Anomaly, Anomaly.detected_at),
         "alerts": count(Alert, Alert.created_at),
@@ -205,16 +210,10 @@ def report_summary(hours: int = Query(24, ge=1, le=720), db: Session = Depends(g
     }
 
 
-# --------------------------- Admin / demo --------------------------------- #
-@router.post("/admin/demo/generate")
-def generate_demo(db: Session = Depends(get_db), user: User = Depends(require_admin)):
-    result = demo_svc.generate_all(db)
-    db.add(AuditEvent(actor=user.username, action="generate_demo", detail=result))
-    db.commit()
-    return {"status": "ok", "generated": result,
-            "note": "All generated records are flagged as DEMO DATA."}
-
-
+# --------------------------- Admin --------------------------------------- #
+# NOTE: Sentinel AI runs LIVE only. There is intentionally NO demo-data
+# generation endpoint — synthetic data must never be able to enter the running
+# dashboard. Synthetic fixtures exist solely for the isolated test suite.
 @router.post("/admin/retention/run")
 def run_retention(db: Session = Depends(get_db), user: User = Depends(require_admin)):
     result = retention_svc.apply_retention(db)

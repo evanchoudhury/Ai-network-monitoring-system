@@ -111,17 +111,15 @@ def ingest_all_sources(
     sources = db.scalars(
         select(IngestionSource).where(
             IngestionSource.enabled.is_(True),
-            IngestionSource.source_type == SourceType.rss,
+            IngestionSource.source_type.in_([SourceType.rss, SourceType.newsapi]),
         )
     ).all()
     results = []
     for src in sources:
-        if not src.url or not src.authorized:
+        if not src.authorized:
             continue
         try:
-            raw = news_svc.fetch_feed_bytes(src.url)
-            articles = news_svc.parse_feed(raw)
-            summary = news_svc.ingest_articles(db, src, articles)
+            summary = news_svc.ingest_source(db, src)
             results.append({"source": src.name, "status": "ok", **summary})
         except Exception as exc:  # noqa: BLE001
             src.last_status = "error"

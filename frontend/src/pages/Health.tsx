@@ -2,9 +2,9 @@ import { CheckCircle2, AlertCircle, XCircle } from "lucide-react";
 import { useApi } from "../hooks/useApi";
 import { api } from "../lib/api";
 import type { HealthReport } from "../lib/types";
-import { AsyncBoundary, SectionCard } from "../components/ui";
+import { AsyncBoundary, FreshnessBadge, SectionCard } from "../components/ui";
 import { PageHeader } from "../components/shared";
-import { formatDateTime, timeAgo } from "../lib/format";
+import { formatDateTime } from "../lib/format";
 
 const STATUS_ICON = {
   ok: <CheckCircle2 className="h-4 w-4 text-success" />,
@@ -28,7 +28,7 @@ export default function HealthPage() {
       <AsyncBoundary state={health}>
         {(h) => (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="card flex items-center gap-3 px-4 py-3">
                 {STATUS_ICON[h.overall]}
                 <div>
@@ -38,13 +38,25 @@ export default function HealthPage() {
               </div>
               <div className="card px-4 py-3">
                 <div className="text-xs text-muted">Operating mode</div>
-                <div className="font-semibold uppercase text-cyan">{h.mode.mode}</div>
-              </div>
-              <div className="card px-4 py-3">
-                <div className="text-xs text-muted">Last live metric</div>
-                <div className="font-mono text-sm text-text">{timeAgo(h.mode.last_live_metric_at)}</div>
+                <div className="font-semibold uppercase text-cyan">LIVE</div>
               </div>
             </div>
+
+            {/* Per-subsystem data-source freshness */}
+            <SectionCard title="Data Sources" bodyClassName="p-0">
+              <div className="divide-y divide-border/60">
+                {([h.status.network, h.status.news, h.status.claims, h.status.spam, h.status.workers]).map((s) => (
+                  <div key={s.subsystem} className="flex items-center justify-between px-4 py-3">
+                    <div>
+                      <div className="font-medium capitalize text-text">{s.subsystem}</div>
+                      <div className="text-xs text-muted">{s.detail}</div>
+                      {s.instructions && <div className="mt-0.5 text-[11px] text-muted">{s.instructions}</div>}
+                    </div>
+                    <FreshnessBadge status={s} />
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
 
             <SectionCard title="Components" bodyClassName="p-0">
               <div className="divide-y divide-border/60">

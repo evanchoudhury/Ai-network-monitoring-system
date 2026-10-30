@@ -82,8 +82,12 @@ export default function SettingsPage() {
           ) : (
             <div className="space-y-3">
               <button className="btn w-full justify-start" disabled={busy}
-                onClick={() => runAction("/admin/demo/generate", "Demo data generated")}>
-                <Database className="h-4 w-4" /> Generate demo data (clearly flagged)
+                onClick={() => runAction("/news/ingest", "News ingested")}>
+                <Database className="h-4 w-4" /> Ingest news sources now
+              </button>
+              <button className="btn w-full justify-start" disabled={busy}
+                onClick={() => runAction("/anomalies/scan", "Anomaly scan complete")}>
+                <Database className="h-4 w-4" /> Run anomaly scan now
               </button>
               <button className="btn w-full justify-start" disabled={busy}
                 onClick={() => runAction("/admin/retention/run", "Retention applied")}>
@@ -104,7 +108,7 @@ export default function SettingsPage() {
             <ul className="list-disc space-y-1 pl-5 text-xs">
               <li>The platform never determines absolute truth; it abstains when evidence is insufficient.</li>
               <li>Only authorized sources and services are monitored. Suspicious links are never auto-visited.</li>
-              <li>Demo data is always clearly labeled and never silently substituted for live data.</li>
+              <li>LIVE only: the dashboard shows real collected data or an explicit unavailable state — never synthetic values.</li>
               <li>Budget limits cap application-level AI usage, not your total cloud bill.</li>
             </ul>
           </div>

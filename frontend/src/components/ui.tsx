@@ -1,8 +1,9 @@
 import { ReactNode } from "react";
-import { AlertTriangle, Inbox, Loader2, WifiOff } from "lucide-react";
+import { AlertTriangle, Inbox, Loader2, PlugZap, WifiOff } from "lucide-react";
 import clsx from "clsx";
-import type { Severity } from "../lib/types";
+import type { Severity, SubsystemStatus } from "../lib/types";
 import { SEVERITY_BG } from "../lib/constants";
+import { timeAgo } from "../lib/format";
 
 export function Card({
   children,
@@ -62,14 +63,54 @@ export function Badge({
   return <span className={clsx("chip", className)}>{children}</span>;
 }
 
-export function DemoTag() {
+const STATE_META: Record<string, { label: string; className: string; dot: string }> = {
+  fresh: { label: "Fresh", className: "text-success", dot: "bg-success" },
+  active: { label: "Active", className: "text-success", dot: "bg-success" },
+  degraded: { label: "Degraded", className: "text-warning", dot: "bg-warning" },
+  stale: { label: "Stale", className: "text-warning", dot: "bg-warning" },
+  disconnected: { label: "Disconnected", className: "text-critical", dot: "bg-critical" },
+  failed: { label: "Failed", className: "text-critical", dot: "bg-critical" },
+  not_configured: { label: "Not configured", className: "text-muted", dot: "bg-muted" },
+  no_source: { label: "No source", className: "text-muted", dot: "bg-muted" },
+  disabled: { label: "Disabled", className: "text-muted", dot: "bg-muted" },
+};
+
+/** Small freshness pill for a subsystem state. */
+export function FreshnessBadge({ status }: { status: SubsystemStatus }) {
+  const m = STATE_META[status.state] ?? STATE_META.not_configured;
   return (
-    <span
-      title="This view contains synthetic demonstration data, not live observations."
-      className="chip border border-warning/40 bg-warning/10 font-semibold uppercase tracking-wider text-warning"
-    >
-      Demo Data
+    <span className="inline-flex items-center gap-1.5 text-xs">
+      <span className={clsx("h-2 w-2 rounded-full", m.dot)} />
+      <span className={m.className}>{m.label}</span>
+      {status.last_update && (
+        <span className="text-muted">· {timeAgo(status.last_update)}</span>
+      )}
     </span>
+  );
+}
+
+/** Prominent banner shown when a data source is not configured/connected.
+ *  Returns null when the subsystem is configured and not in an error state. */
+export function StatusBanner({ status }: { status?: SubsystemStatus }) {
+  if (!status) return null;
+  const bad = ["not_configured", "no_source", "disconnected", "failed"].includes(status.state);
+  if (!bad) return null;
+  const critical = status.state === "disconnected" || status.state === "failed";
+  return (
+    <div
+      className={clsx(
+        "mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm",
+        critical ? "border-critical/40 bg-critical/5" : "border-warning/40 bg-warning/5"
+      )}
+    >
+      <PlugZap className={clsx("mt-0.5 h-5 w-5 shrink-0", critical ? "text-critical" : "text-warning")} />
+      <div>
+        <div className="font-semibold text-text">{status.detail}</div>
+        {status.instructions && (
+          <div className="mt-0.5 text-xs text-muted">{status.instructions}</div>
+        )}
+      </div>
+    </div>
   );
 }
 

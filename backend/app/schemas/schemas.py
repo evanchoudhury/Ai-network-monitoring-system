@@ -45,6 +45,20 @@ class MetricBatchIn(BaseModel):
     metrics: list[MetricIn] = Field(min_length=1, max_length=500)
 
 
+class ConnectionIn(BaseModel):
+    src_service: str = Field(min_length=1, max_length=128)
+    dst_service: str = Field(min_length=1, max_length=128)
+    timestamp: datetime | None = None
+    bytes_transferred: float | None = Field(default=None, ge=0)
+    connection_count: int = Field(default=1, ge=1)
+    # Only set suspicious when backed by a real detector/event.
+    suspicious: bool = False
+
+
+class ConnectionBatchIn(BaseModel):
+    connections: list[ConnectionIn] = Field(min_length=1, max_length=500)
+
+
 class PrometheusScrapeIn(BaseModel):
     service: str = Field(min_length=1, max_length=128)
     text: str = Field(min_length=1)

@@ -10,11 +10,49 @@ from sqlalchemy.orm import Session
 
 from app.core.security import require_admin
 from app.database import get_db
-from app.models import AuditEvent, User
-from app.schemas.schemas import MetricBatchIn, MetricIn, PrometheusScrapeIn
+from app.models import AuditEvent, NetworkConnection, User
+from app.schemas.schemas import (
+    ConnectionBatchIn,
+    MetricBatchIn,
+    MetricIn,
+    PrometheusScrapeIn,
+)
 from app.services import metrics as metrics_svc
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
+
+
+@router.post("/connections", status_code=201)
+def ingest_connections(
+    payload: ConnectionBatchIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """Record observed connection events between two services for the map.
+
+    Each endpoint must be an authorized service (auto-created if new). A
+    connection is only ever marked suspicious when the caller sets it from a
+    real detector/event — never speculatively.
+    """
+    accepted = 0
+    for c in payload.connections:
+        src = metrics_svc.get_or_create_service(db, c.src_service)
+        dst = metrics_svc.get_or_create_service(db, c.dst_service)
+        if not src.authorized or not dst.authorized:
+            continue
+        db.add(NetworkConnection(
+            src_service_id=src.id, dst_service_id=dst.id,
+            observed_at=c.timestamp or metrics_svc.utcnow(),
+            bytes_transferred=c.bytes_transferred,
+            connection_count=c.connection_count,
+            suspicious=c.suspicious,
+            is_demo=False,
+        ))
+        accepted += 1
+    db.add(AuditEvent(actor=user.username, action="ingest_connections",
+                      detail={"accepted": accepted}))
+    db.commit()
+    return {"accepted": accepted}
 
 
 @router.post("/metrics", status_code=201)

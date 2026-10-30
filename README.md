@@ -11,11 +11,12 @@ A practical, open-source platform for **authorized network monitoring**, **stati
 
 ---
 
-> **Honesty first.** Sentinel AI never claims to determine the absolute truth of a
-> claim. It abstains when evidence is insufficient. It never fabricates live
-> traffic, articles, citations, or deployment results. Demonstration data is
-> always clearly labelled **DEMO DATA** and is never silently substituted for
-> live data.
+> **LIVE only.** Sentinel AI operates on real data from configured, authorized
+> sources. There is **no demo mode** and no synthetic-data fallback in the running
+> app. When a source is missing or unavailable, the dashboard shows an explicit
+> *not configured / stale / disconnected* state — it never fabricates traffic,
+> alerts, articles, or health. It also never claims to determine the absolute
+> truth of a claim; it abstains when evidence is insufficient.
 
 ## Screenshots
 
@@ -36,18 +37,21 @@ A practical, open-source platform for **authorized network monitoring**, **stati
 | Module | Status | Notes |
 |---|---|---|
 | Network metric ingestion (HTTP push + Prometheus) | ✅ Working | Authorized services only |
-| Traffic aggregation + charts | ✅ Working | Inbound/outbound, rps, latency, error rate |
-| Global network map | ✅ Working | d3-geo, zoom/pan, animated arcs, event-backed nodes |
+| Connection-event ingestion (for the map) | ✅ Working | `POST /api/ingest/connections`, traceable |
+| Traffic aggregation + charts | ✅ Working | Inbound/outbound, rps, latency, error rate; "No data" when absent |
+| Global network map | ✅ Working | d3-geo, zoom/pan, real nodes/connections only |
 | Statistical anomaly detection | ✅ Working | Rolling z-score + optional IsolationForest |
-| Persistent alerts (dedup + cooldown + ack) | ✅ Working | |
-| RSS news ingestion | ✅ Working | Live feeds; respects source terms |
-| Supported news/fact-check APIs | ⚙️ Interface ready | Requires API keys (NewsAPI, Google Fact Check) |
+| Persistent alerts (dedup + cooldown + ack) | ✅ Working | Detector-generated only |
+| RSS news ingestion | ✅ Working | Live BBC / NPR / Guardian / Al Jazeera |
+| NewsAPI ingestion | ✅ Working | Set `NEWSAPI_KEY`; auto-seeds a source |
+| Google Fact Check evidence | ⚙️ Needs API key | Requires a Google **API key** (not an OAuth client) |
 | Article dedup + story grouping | ✅ Working | Distinct-publisher diversity |
 | Claim extraction + evidence assessment | ✅ Working | Deterministic; abstains on weak evidence |
-| Spam / phishing analysis | ✅ Working | Explainable; URLs never auto-visited |
-| System health monitoring | ✅ Working | Per-component status |
+| Spam / phishing analysis | ✅ Working | User-submitted; URLs never auto-visited |
+| Per-source status & freshness | ✅ Working | fresh / stale / disconnected / not configured |
+| System health monitoring | ✅ Working | Real checks only — never a fake green light |
 | Budget / usage tracking | ✅ Working | Fail-closed; estimates clearly labelled |
-| Reports & history | ✅ Working | |
+| Auto-refresh (bounded polling) | ✅ Working | Visible last-updated + stale indicator |
 | PWA (installable, offline shell) | ✅ Working | NetworkOnly for `/api` |
 
 See **[docs/REPORT.md](docs/REPORT.md)** for a full, honest implementation &amp; test report.
@@ -82,12 +86,26 @@ npm run dev
 ```
 Dashboard: http://localhost:5173 (the dev server proxies `/api` → `:8000`)
 
-**Load demo data** — sign in via the dashboard **Settings** page with your
-`ADMIN_USERNAME` / `ADMIN_PASSWORD`, then click **Generate demo data**, or:
+**Send live data** — there is no demo mode. Point the app at real sources:
+
 ```bash
+# Authenticate as the operator
 TOKEN=$(curl -s -X POST localhost:8000/api/auth/token -d "username=admin&password=change-me" | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
-curl -X POST localhost:8000/api/admin/demo/generate -H "Authorization: Bearer $TOKEN"
+
+# Ingest live news (default RSS feeds; add NEWSAPI_KEY for NewsAPI too)
+curl -X POST localhost:8000/api/news/ingest -H "Authorization: Bearer $TOKEN"
+
+# Push a real metric from an authorized collector
+curl -X POST localhost:8000/api/ingest/metrics -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"service":"prod-api","request_rate":42,"error_rate":0.01,"latency_p95_ms":120,"bytes_in":50000,"bytes_out":30000,"available":true}'
 ```
+
+**Verify LIVE status**: `curl localhost:8000/api/status` reports each subsystem's
+configured/freshness state; the dashboard header shows **LIVE / stale /
+disconnected** with a last-updated time, and **System Health** shows per-source
+freshness. No data for a source renders as *not configured* / *No data available*,
+never as a fabricated value.
 
 ## Quick start (Docker Compose — Postgres + API + web)
 
@@ -102,7 +120,7 @@ docker compose up --build
 
 ```bash
 cd backend && source .venv/bin/activate
-pytest            # 52 tests, synthetic data only, no paid calls
+pytest            # 62 tests, synthetic data only, no paid calls
 ```
 
 ## Documentation

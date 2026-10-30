@@ -27,7 +27,7 @@ export default function App() {
   return (
     <AuthProvider>
       <Layout
-        mode={overview.data?.mode}
+        status={overview.data?.status}
         alertCount={overview.data?.kpis.active_alerts}
       >
         <Routes>

@@ -103,6 +103,14 @@ class Settings(BaseSettings):
     anomaly_min_baseline_points: int = 12
     anomaly_baseline_window: int = 48
 
+    # ---- Data-source freshness thresholds (LIVE status) ---------------
+    # A metrics source is "fresh" if a point arrived within this window,
+    # otherwise "stale". Tune to your push/scrape interval.
+    metric_fresh_seconds: int = 600          # 10 minutes
+    # RSS feeds refresh periodically; freshness is generous accordingly
+    # (defaults to ~2x the ingest interval).
+    news_fresh_seconds: int = 5400           # 90 minutes
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors(cls, v: Any) -> Any:

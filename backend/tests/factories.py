@@ -1,9 +1,10 @@
-"""Synthetic DEMO data generator.
+"""TEST-ONLY synthetic data factory.
 
-Everything produced here is flagged ``is_demo=True`` (or clearly attributed to
-demo sources) so the UI can label it DEMO DATA and never confuse it with live
-observations. This exercises the *real* pipelines (anomaly detection, claim
-assessment, spam scoring) on synthetic inputs — it does not hardcode results.
+This module is **not** part of the running application and is **not** reachable
+from any API route. Sentinel AI operates LIVE only; synthetic data lives here
+solely so the isolated test suite can exercise the real pipelines (anomaly
+detection, claim assessment, spam scoring) on deterministic inputs. It is never
+imported by ``app.*`` runtime code.
 """
 from __future__ import annotations
 

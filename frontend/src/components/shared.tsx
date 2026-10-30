@@ -9,24 +9,15 @@ export function PageHeader({
   title,
   subtitle,
   actions,
-  demo,
 }: {
   title: string;
   subtitle?: string;
   actions?: ReactNode;
-  demo?: boolean;
 }) {
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="flex items-center gap-2 text-xl font-semibold text-text">
-          {title}
-          {demo && (
-            <span className="chip border border-warning/40 bg-warning/10 text-[10px] uppercase tracking-wider text-warning">
-              Demo Data
-            </span>
-          )}
-        </h1>
+        <h1 className="text-xl font-semibold text-text">{title}</h1>
         {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}

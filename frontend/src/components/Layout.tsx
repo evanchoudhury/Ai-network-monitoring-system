@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { NAV_ITEMS } from "../lib/constants";
-import type { ModeInfo } from "../lib/types";
+import type { SystemStatus } from "../lib/types";
 import { timeAgo } from "../lib/format";
 
 const ICONS: Record<string, typeof Activity> = {
@@ -57,32 +57,41 @@ function Logo() {
   );
 }
 
-export function ModeIndicator({ mode }: { mode?: ModeInfo }) {
-  if (!mode) return null;
-  const map = {
-    live: { label: "LIVE", dot: "bg-success", ring: "ring-success/40", text: "text-success" },
-    live_stale: { label: "LIVE · STALE", dot: "bg-warning", ring: "ring-warning/40", text: "text-warning" },
-    demo: { label: "DEMO", dot: "bg-cyan", ring: "ring-cyan/40", text: "text-cyan" },
-    empty: { label: "NO DATA", dot: "bg-muted", ring: "ring-muted/40", text: "text-muted" },
-  }[mode.mode];
+/** Real connection/freshness indicator. The app is always LIVE; the dot colour
+ *  reflects whether a configured source is actually fresh. It never animates as
+ *  "live" unless data is genuinely being received. */
+export function ConnectionStatus({ status }: { status?: SystemStatus }) {
+  if (!status) return null;
+  const net = status.network;
+  const news = status.news;
+
+  // Determine the overall indicator from configured sources only.
+  let color: string, ring: string, label: string, animate: boolean, tip: string;
+  if (!net.configured && !news.configured) {
+    color = "bg-muted"; ring = "ring-muted/40"; label = "NO SOURCE"; animate = false;
+    tip = "No live data source configured. See Data Sources / System Health.";
+  } else if (net.state === "fresh" || news.state === "fresh" || news.state === "degraded") {
+    color = "bg-success"; ring = "ring-success/40"; label = "LIVE"; animate = true;
+    tip = `Live. ${net.detail} ${news.configured ? "News: " + news.detail : ""}`.trim();
+  } else if (net.state === "stale" || news.state === "stale") {
+    color = "bg-warning"; ring = "ring-warning/40"; label = "LIVE · STALE"; animate = false;
+    tip = `Data is stale. ${net.state === "stale" ? net.detail : news.detail}`;
+  } else {
+    color = "bg-critical"; ring = "ring-critical/40"; label = "DISCONNECTED"; animate = false;
+    tip = net.configured ? net.detail : news.detail;
+  }
+  const last = net.last_update ?? news.last_update ?? null;
   return (
     <div
-      title={
-        mode.mode === "demo"
-          ? "Showing synthetic demonstration data."
-          : mode.mode === "live_stale"
-            ? `Live source is stale. Last live metric ${timeAgo(mode.last_live_metric_at)}.`
-            : mode.mode === "empty"
-              ? "No data collected yet. Generate demo data or connect a live source."
-              : "Showing live data from configured sources."
-      }
+      title={tip}
       className={clsx(
         "inline-flex items-center gap-2 rounded-lg border border-border bg-elevated px-3 py-1.5 ring-1",
-        map.ring
+        ring
       )}
     >
-      <span className={clsx("h-2 w-2 rounded-full animate-pulseGlow", map.dot)} />
-      <span className={clsx("text-xs font-semibold tracking-wider", map.text)}>{map.label}</span>
+      <span className={clsx("h-2 w-2 rounded-full", color, animate && "animate-pulseGlow")} />
+      <span className="text-xs font-semibold tracking-wider text-text">{label}</span>
+      {last && <span className="hidden text-[10px] text-muted sm:inline">· {timeAgo(last)}</span>}
     </div>
   );
 }
@@ -118,12 +127,12 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Layout({
   children,
-  mode,
+  status,
   alertCount,
   rightControls,
 }: {
   children: ReactNode;
-  mode?: ModeInfo;
+  status?: SystemStatus;
   alertCount?: number;
   rightControls?: ReactNode;
 }) {
@@ -183,7 +192,7 @@ export function Layout({
           </div>
           <div className="flex-1" />
           {rightControls}
-          <ModeIndicator mode={mode} />
+          <ConnectionStatus status={status} />
           <div className="relative">
             <button className="btn px-2 py-1.5" aria-label="Alerts">
               <Bell className="h-4 w-4" />
