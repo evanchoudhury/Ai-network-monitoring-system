@@ -33,13 +33,17 @@ function compact(n: number): string {
 
 const tooltipStyle = {
   contentStyle: {
-    background: "#0D1928",
+    background: "rgba(13, 25, 40, 0.96)",
     border: "1px solid #1D3349",
-    borderRadius: 8,
+    borderRadius: 10,
     fontSize: 12,
     color: "#ECF5FF",
+    boxShadow: "0 10px 30px -10px rgba(0,0,0,0.7)",
+    backdropFilter: "blur(6px)",
+    padding: "8px 12px",
   },
-  labelStyle: { color: "#8DA4BC" },
+  labelStyle: { color: "#8DA4BC", marginBottom: 4, fontSize: 11 },
+  cursor: { stroke: "#20D9F2", strokeOpacity: 0.25, strokeWidth: 1 },
 };
 
 export function TrafficChart({

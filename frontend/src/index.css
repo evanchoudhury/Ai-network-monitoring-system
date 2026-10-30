@@ -4,6 +4,9 @@
 
 :root {
   color-scheme: dark;
+  /* Elevation + glow tokens reused across components */
+  --ring-cyan: rgba(32, 217, 242, 0.45);
+  --ring-blue: rgba(51, 139, 255, 0.45);
 }
 
 html,
@@ -15,8 +18,18 @@ body,
 body {
   margin: 0;
   background-color: #050a12;
+  /* Layered SOC depth: two soft radial glows + a faint technical grid.
+     Fixed so it reads as ambient atmosphere, never distracting. */
+  background-image:
+    radial-gradient(900px 500px at 78% -8%, rgba(51, 139, 255, 0.10), transparent 60%),
+    radial-gradient(800px 500px at 8% 4%, rgba(32, 217, 242, 0.07), transparent 55%),
+    linear-gradient(rgba(29, 51, 73, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 51, 73, 0.16) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 44px 44px, 44px 44px;
+  background-attachment: fixed;
   color: #ecf5ff;
   font-family: Inter, system-ui, sans-serif;
+  font-feature-settings: "cv05", "ss01";
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -37,30 +50,54 @@ body {
   background: #2a4a68;
 }
 
+/* Visible, on-brand keyboard focus (accessibility) */
+:focus-visible {
+  outline: 2px solid var(--ring-cyan);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 @layer components {
+  /* Surfaces carry a 1px hairline plus a faint top sheen for real depth. */
   .card {
-    @apply rounded-xl border border-border bg-card;
+    @apply relative rounded-xl border border-border/80 bg-card/95 transition-all duration-200;
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 42%);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03);
   }
   .card-elevated {
-    @apply rounded-xl border border-border bg-elevated;
+    @apply relative rounded-xl border border-border bg-elevated transition-all duration-200;
+    box-shadow: 0 4px 20px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  /* Interactive card: subtle lift + accent border on hover. */
+  .card-hover {
+    @apply hover:-translate-y-0.5 hover:border-cyan/30;
+  }
+  .card-hover:hover {
+    box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(32, 217, 242, 0.12);
   }
   .kpi-value {
     @apply font-mono text-2xl font-semibold tracking-tight text-text;
+    font-variant-numeric: tabular-nums;
   }
   .section-title {
-    @apply text-sm font-semibold uppercase tracking-wider text-muted;
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-muted;
   }
   .btn {
-    @apply inline-flex items-center gap-2 rounded-lg border border-border bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-colors hover:border-cyan/50 hover:text-cyan disabled:opacity-50;
+    @apply inline-flex items-center gap-2 rounded-lg border border-border bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-all duration-150 hover:border-cyan/50 hover:text-cyan hover:shadow-[0_0_14px_-4px_rgba(32,217,242,0.5)] active:scale-[0.98] disabled:opacity-50 disabled:hover:shadow-none;
   }
   .btn-primary {
-    @apply inline-flex items-center gap-2 rounded-lg bg-blue px-3 py-1.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50;
+    @apply inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-white transition-all duration-150 active:scale-[0.98] disabled:opacity-50;
+    background-image: linear-gradient(180deg, #4a99ff, #2f7ff0);
+    box-shadow: 0 4px 16px -6px rgba(51, 139, 255, 0.6);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 6px 20px -5px rgba(51, 139, 255, 0.75);
   }
   .chip {
     @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium;
   }
   .input {
-    @apply w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm text-text placeholder-muted/60 outline-none focus:border-cyan/60;
+    @apply w-full rounded-lg border border-border bg-bg/70 px-3 py-2 text-sm text-text placeholder-muted/60 outline-none transition-colors focus:border-cyan/60 focus:bg-bg focus:shadow-[0_0_0_3px_rgba(32,217,242,0.12)];
   }
 }
 
@@ -71,6 +108,9 @@ body {
   *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+    transition: none !important;
+  }
+  .card-hover:hover {
+    transform: none;
   }
 }

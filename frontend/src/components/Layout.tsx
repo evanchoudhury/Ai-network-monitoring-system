@@ -109,15 +109,28 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             className={({ isActive }) =>
               clsx(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-150",
                 isActive
-                  ? "bg-blue/15 font-semibold text-text ring-1 ring-blue/40 shadow-glow-blue"
-                  : "text-muted hover:bg-elevated hover:text-text"
+                  ? "font-semibold text-text"
+                  : "text-muted hover:translate-x-0.5 hover:bg-elevated/70 hover:text-text"
               )
             }
           >
-            <Icon className="h-[18px] w-[18px]" />
-            <span>{item.label}</span>
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <>
+                    <span
+                      className="absolute inset-0 rounded-lg ring-1 ring-cyan/25"
+                      style={{ background: "linear-gradient(90deg, rgba(32,217,242,0.14), rgba(51,139,255,0.06))" }}
+                    />
+                    <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-cyan shadow-[0_0_10px_rgba(32,217,242,0.8)]" />
+                  </>
+                )}
+                <Icon className={clsx("relative h-[18px] w-[18px]", isActive && "text-cyan")} />
+                <span className="relative">{item.label}</span>
+              </>
+            )}
           </NavLink>
         );
       })}
