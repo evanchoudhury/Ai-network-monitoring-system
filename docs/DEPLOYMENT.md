@@ -190,7 +190,9 @@ backend/worker must run on a host that supports persistent processes.
 - [ ] Rate limits and budget caps reviewed (`/api/budget`)
 - [ ] Retention windows set appropriately (`METRIC_RETENTION_DAYS`, etc.)
 - [ ] Only authorized sources/services configured
-- [ ] Expected monthly cost of chosen resources estimated and approved
+- [ ] Expected monthly cost of chosen resources estimated and approved (see `docs/COSTS.md`)
+- [ ] Provider **budget alert** set (e.g. at $5/$15/$25) — app limits are not a billing cap
+- [ ] Cheapest practical architecture chosen (static frontend + 1 small backend + 1 Postgres)
 - [ ] Backups configured for Postgres (see below)
 
 ## 7. Backup & recovery (Postgres)

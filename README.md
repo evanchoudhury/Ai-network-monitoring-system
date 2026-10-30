@@ -127,6 +127,7 @@ pytest            # 62 tests, synthetic data only, no paid calls
 
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — system design, data model, request flow
 - **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** — local, Docker, and cloud deployment + checklist
+- **[docs/COSTS.md](docs/COSTS.md)** — cost baseline, cheapest architecture, and savings plan
 - **[docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md)** — design tokens, components, page specs
 - **[docs/BRANDING.md](docs/BRANDING.md)** — logo, icon & brand asset brief
 - **[docs/REPORT.md](docs/REPORT.md)** — honest status: what works, what's demo, what needs keys

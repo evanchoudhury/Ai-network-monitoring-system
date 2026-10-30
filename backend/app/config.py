@@ -88,15 +88,22 @@ class Settings(BaseSettings):
     budget_fail_closed: bool = True
 
     # ---- Retention -----------------------------------------------------
-    metric_retention_days: int = 30
-    article_retention_days: int = 90
-    max_stored_articles: int = 50_000
+    # Frugal defaults keep the database small on free/cheap tiers. Metrics are
+    # the highest-volume table, so they are kept shorter than articles. All of
+    # these are env-overridable (raise them if you have storage headroom).
+    metric_retention_days: int = 14
+    article_retention_days: int = 60
+    max_stored_articles: int = 20_000
 
     # ---- Background workers -------------------------------------------
+    # Interval defaults are tuned for low cost: fewer wakeups + fewer outbound
+    # calls (keeps NewsAPI well under free-tier limits) while staying fresh
+    # enough for LIVE status. Lower them if you need faster refresh and can
+    # afford the extra compute/quota.
     enable_scheduler: bool = True
-    news_ingest_interval_minutes: int = 30
-    anomaly_scan_interval_minutes: int = 5
-    health_check_interval_minutes: int = 2
+    news_ingest_interval_minutes: int = 60
+    anomaly_scan_interval_minutes: int = 10
+    health_check_interval_minutes: int = 5
 
     # ---- Anomaly detection defaults -----------------------------------
     anomaly_zscore_threshold: float = 3.5
