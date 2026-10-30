@@ -16,10 +16,10 @@ logger = get_logger("sentinel.bootstrap")
 # expected to review/replace these; they are disabled-by-default-safe because
 # ingestion only runs when the scheduler is enabled or triggered explicitly.
 DEFAULT_RSS_SOURCES = [
-    ("BBC News - World", "http://feeds.bbci.co.uk/news/world/rss.xml"),
+    ("BBC News - World", "https://feeds.bbci.co.uk/news/world/rss.xml"),
     ("NPR News", "https://feeds.npr.org/1001/rss.xml"),
-    ("Reuters - Top News", "https://www.reutersagency.com/feed/?best-topics=top-news&post_type=best"),
     ("The Guardian - World", "https://www.theguardian.com/world/rss"),
+    ("Al Jazeera - All", "https://www.aljazeera.com/xml/rss/all.xml"),
 ]
 
 
